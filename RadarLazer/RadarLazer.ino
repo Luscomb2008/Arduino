@@ -124,18 +124,9 @@ void flashOLED() {
   }
 }
 
-// Function to play an alarm-like sound on the speaker
+// Function to play a loud, continuous alarm-like sound on the speaker
 void soundAlarm() {
-  // Alternate between high and low frequency to simulate an alarm sound
-  tone(buzzerPin, 1000);  // 1 kHz (high-pitched tone)
-  delay(200);             // Wait for a short duration
-
-  tone(buzzerPin, 400);  // 400 Hz (low-pitched tone)
-  delay(200);             // Wait for a short duration
-
-  tone(buzzerPin, 1000);  // Repeat with the high-pitched tone
-  delay(200);             // Wait for a short duration
-
-  tone(buzzerPin, 400);  // Repeat with the low-pitched tone
-  delay(200);             // Wait for a short duration
+  // Set a very high frequency (3 kHz), which will likely be perceived as the loudest on a passive speaker
+  tone(buzzerPin, 3000);  // 3 kHz is a very high frequency for the speaker
+  delay(50);              // Short delay to keep the sound aggressive and constant
 }
