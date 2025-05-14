@@ -9,6 +9,7 @@ const int servoPin = 9;
 const int trigPin = 10;
 const int echoPin = 11;
 const int joystickX = A0;
+const int buzzerPin = 8; // Passive Buzzer on pin 8
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -16,7 +17,7 @@ const int joystickX = A0;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-const long detectionThreshold = 50;
+const long detectionThreshold = 50; // in cm
 
 int currentAngle = 90; // Start at neutral midpoint
 
@@ -25,6 +26,8 @@ void setup() {
 
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
+  pinMode(buzzerPin, OUTPUT); // Buzzer output
+
   myServo.attach(servoPin);
   myServo.write(currentAngle);
 
@@ -42,13 +45,13 @@ void loop() {
   int joyVal = analogRead(joystickX);
   int targetAngle = map(joyVal, 0, 1023, 0, 180);
 
-  // Calculate the speed: the further the joystick is pushed, the faster the movement
-  int speed = map(abs(joyVal - 512), 0, 512, 1, 5);  // 1 to 5 (speed multiplier)
+  // Calculate the speed based on joystick position
+  int speed = map(abs(joyVal - 512), 0, 512, 1, 5);
 
-  // Smoothly move towards the target, adjusting speed dynamically
+  // Smooth servo movement
   if (abs(currentAngle - targetAngle) > 1) {
     if (currentAngle < targetAngle) {
-      currentAngle += speed;  // Move towards target with variable speed
+      currentAngle += speed;
       if (currentAngle > targetAngle) currentAngle = targetAngle;
     } else {
       currentAngle -= speed;
@@ -69,7 +72,7 @@ void loop() {
   Serial.print(" | Distance: ");
   Serial.println(distance);
 
-  delay(10); // Faster, smoother movement
+  delay(10);
 }
 
 long getDistance() {
@@ -80,13 +83,15 @@ long getDistance() {
   digitalWrite(trigPin, LOW);
 
   long duration = pulseIn(echoPin, HIGH);
-  return duration * 0.034 / 2;
+  return duration * 0.034 / 2; // Convert to cm
 }
 
 void handleDetection(long distance) {
-  if (distance <= detectionThreshold) {
+  if (distance <= detectionThreshold && distance > 0) {
     flashOLED();
+    tone(buzzerPin, 500); // 🔉 Lower pitch (500 Hz) but still loud
   } else {
+    noTone(buzzerPin); // Stop buzzer
     display.clearDisplay();
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
