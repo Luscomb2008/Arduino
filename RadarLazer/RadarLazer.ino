@@ -9,7 +9,7 @@ const int servoPin = 9;
 const int trigPin = 10;
 const int echoPin = 11;
 const int joystickX = A0;
-const int buzzerPin = 8; // Passive Buzzer on pin 8
+const int buzzerPin = 8; // Passive Speaker connected to pin 8
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -26,7 +26,7 @@ void setup() {
 
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
-  pinMode(buzzerPin, OUTPUT); // Buzzer output
+  pinMode(buzzerPin, OUTPUT); // Buzzer (speaker) pin setup
 
   myServo.attach(servoPin);
   myServo.write(currentAngle);
@@ -89,9 +89,9 @@ long getDistance() {
 void handleDetection(long distance) {
   if (distance <= detectionThreshold && distance > 0) {
     flashOLED();
-    tone(buzzerPin, 500); // 🔉 Lower pitch (500 Hz) but still loud
+    soundAlarm(); // Play alarm sound when object is detected
   } else {
-    noTone(buzzerPin); // Stop buzzer
+    noTone(buzzerPin); // Stop the alarm
     display.clearDisplay();
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
@@ -122,4 +122,20 @@ void flashOLED() {
     isFlashing = !isFlashing;
     display.display();
   }
+}
+
+// Function to play an alarm-like sound on the speaker
+void soundAlarm() {
+  // Alternate between high and low frequency to simulate an alarm sound
+  tone(buzzerPin, 1000);  // 1 kHz (high-pitched tone)
+  delay(200);             // Wait for a short duration
+
+  tone(buzzerPin, 400);  // 400 Hz (low-pitched tone)
+  delay(200);             // Wait for a short duration
+
+  tone(buzzerPin, 1000);  // Repeat with the high-pitched tone
+  delay(200);             // Wait for a short duration
+
+  tone(buzzerPin, 400);  // Repeat with the low-pitched tone
+  delay(200);             // Wait for a short duration
 }
