@@ -24,6 +24,9 @@ Adafruit_NeoPixel strip(numPixels, ledPin, NEO_GRB + NEO_KHZ800); // Initialize 
 const long detectionThreshold = 50; // in cm
 
 int currentAngle = 90; // Start at neutral midpoint
+unsigned long lastSirenTime = 0;  // Timer for siren effect
+int sirenFrequency = 1000;         // Starting frequency for siren
+int sirenDirection = 1;            // Direction of frequency change (+1 or -1)
 
 void setup() {
   Serial.begin(9600);
@@ -32,8 +35,8 @@ void setup() {
   pinMode(echoPin, INPUT);
   pinMode(buzzerPin, OUTPUT); // Buzzer (speaker) pin setup
 
-  myServo.attach(servoPin);
-  myServo.write(currentAngle);
+  myServo.attach(servoPin);  // Attach the servo to the correct pin
+  myServo.write(currentAngle); // Start at neutral position
 
   // Initialize the NeoPixel strip
   strip.begin();
@@ -50,13 +53,13 @@ void setup() {
 }
 
 void loop() {
-  int joyVal = analogRead(joystickX);
-  int targetAngle = map(joyVal, 0, 1023, 0, 180);
+  int joyVal = analogRead(joystickX);  // Read joystick X-axis value
+  int targetAngle = map(joyVal, 0, 1023, 0, 180); // Map joystick value to angle (0 to 180)
 
   // Calculate the speed based on joystick position
   int speed = map(abs(joyVal - 512), 0, 512, 1, 5);
 
-  // Smooth servo movement
+  // Smooth servo movement based on joystick input
   if (abs(currentAngle - targetAngle) > 1) {
     if (currentAngle < targetAngle) {
       currentAngle += speed;
@@ -65,12 +68,13 @@ void loop() {
       currentAngle -= speed;
       if (currentAngle < targetAngle) currentAngle = targetAngle;
     }
-    myServo.write(currentAngle);
+    myServo.write(currentAngle); // Move the servo to the new angle
   }
 
-  long distance = getDistance();
-  handleDetection(distance);
+  long distance = getDistance();  // Get the distance from the ultrasonic sensor
+  handleDetection(distance);      // Handle the detection logic
 
+  // Debugging prints for servo and distance
   Serial.print("Joystick: ");
   Serial.print(joyVal);
   Serial.print(" | Target: ");
@@ -79,8 +83,6 @@ void loop() {
   Serial.print(currentAngle);
   Serial.print(" | Distance: ");
   Serial.println(distance);
-
-  delay(10);
 }
 
 long getDistance() {
@@ -97,10 +99,10 @@ long getDistance() {
 void handleDetection(long distance) {
   if (distance <= detectionThreshold && distance > 0) {
     flashOLED();
-    soundAlarm();  // Play alarm sound when object is detected
-    flashLEDs();   // Flash Red and Blue LEDs when detection occurs
+    playSiren();    // Play siren sound when object is detected
+    flashLEDs();    // Flash Red and Blue LEDs when detection occurs
   } else {
-    noTone(buzzerPin);  // Stop the alarm
+    noTone(buzzerPin);  // Stop the siren sound
     display.clearDisplay();
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
@@ -136,11 +138,25 @@ void flashOLED() {
   }
 }
 
-// Function to play a loud, continuous alarm-like sound on the speaker
-void soundAlarm() {
-  // Set a very high frequency (3 kHz), which will likely be perceived as the loudest on a passive speaker
-  tone(buzzerPin, 3000);  // 3 kHz is a very high frequency for the speaker
-  delay(50);              // Short delay to keep the sound aggressive and constant
+// Function to play a siren-like sound on the passive buzzer
+void playSiren() {
+  unsigned long currentMillis = millis();
+  
+  // Make the siren change pitch smoothly
+  if (currentMillis - lastSirenTime >= 50) {  // Update frequency every 50ms
+    lastSirenTime = currentMillis;
+    
+    // Adjust frequency based on the direction (increase or decrease)
+    tone(buzzerPin, sirenFrequency);
+
+    // Change frequency for next iteration
+    sirenFrequency += sirenDirection * 10;
+
+    // Reverse direction if frequency goes out of desired range (e.g., between 500Hz and 1500Hz)
+    if (sirenFrequency <= 500 || sirenFrequency >= 1500) {
+      sirenDirection = -sirenDirection;  // Change direction
+    }
+  }
 }
 
 // Flash Red and Blue LEDs on the WS2812 strip when an object is detected
