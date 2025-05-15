@@ -2,6 +2,7 @@
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
 #include <Servo.h>
+#include <Adafruit_NeoPixel.h>
 
 Servo myServo;
 
@@ -9,13 +10,16 @@ const int servoPin = 9;
 const int trigPin = 10;
 const int echoPin = 11;
 const int joystickX = A0;
-const int buzzerPin = 8; // Passive Speaker connected to pin 8
+const int buzzerPin = 4;  // Passive Buzzer pin
+const int ledPin = 7;     // LED strip data pin (connected to digital 7)
+const int numPixels = 30; // Number of LEDs in the strip (change this number as needed)
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+Adafruit_NeoPixel strip(numPixels, ledPin, NEO_GRB + NEO_KHZ800); // Initialize the WS2812 strip
 
 const long detectionThreshold = 50; // in cm
 
@@ -30,6 +34,10 @@ void setup() {
 
   myServo.attach(servoPin);
   myServo.write(currentAngle);
+
+  // Initialize the NeoPixel strip
+  strip.begin();
+  strip.show();  // Initialize all pixels to off
 
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println(F("SSD1306 allocation failed"));
@@ -89,15 +97,19 @@ long getDistance() {
 void handleDetection(long distance) {
   if (distance <= detectionThreshold && distance > 0) {
     flashOLED();
-    soundAlarm(); // Play alarm sound when object is detected
+    soundAlarm();  // Play alarm sound when object is detected
+    flashLEDs();   // Flash Red and Blue LEDs when detection occurs
   } else {
-    noTone(buzzerPin); // Stop the alarm
+    noTone(buzzerPin);  // Stop the alarm
     display.clearDisplay();
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(10, 10);
     display.print(F("No detection"));
     display.display();
+
+    // Turn off the LED strip
+    turnOffLEDs();
   }
 }
 
@@ -129,4 +141,42 @@ void soundAlarm() {
   // Set a very high frequency (3 kHz), which will likely be perceived as the loudest on a passive speaker
   tone(buzzerPin, 3000);  // 3 kHz is a very high frequency for the speaker
   delay(50);              // Short delay to keep the sound aggressive and constant
+}
+
+// Flash Red and Blue LEDs on the WS2812 strip when an object is detected
+void flashLEDs() {
+  static long lastLEDFlash = 0;
+  long currentMillis = millis();
+
+  // Alternate flashing every 500ms
+  if (currentMillis - lastLEDFlash >= 500) {
+    lastLEDFlash = currentMillis;
+
+    // Alternate between Red and Blue colors
+    static bool isRed = true;
+    if (isRed) {
+      // Flash Red
+      setLEDColor(255, 0, 0);  // Red
+    } else {
+      // Flash Blue
+      setLEDColor(0, 0, 255);  // Blue
+    }
+    isRed = !isRed;
+  }
+}
+
+// Set the entire WS2812 strip to a single color
+void setLEDColor(int red, int green, int blue) {
+  for (int i = 0; i < numPixels; i++) {
+    strip.setPixelColor(i, strip.Color(red, green, blue)); // Set color for each LED
+  }
+  strip.show();  // Update the strip
+}
+
+// Turn off all LEDs on the WS2812 strip
+void turnOffLEDs() {
+  for (int i = 0; i < numPixels; i++) {
+    strip.setPixelColor(i, strip.Color(0, 0, 0)); // Turn off each LED
+  }
+  strip.show();  // Update the strip
 }
